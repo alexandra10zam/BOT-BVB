@@ -1,0 +1,26 @@
+name: Market alerts
+
+# Runs the bot in the cloud, so no PC has to stay on.
+# BVB trades 10:00-18:00 Bucharest time = 07:00-16:00 UTC across summer/winter time.
+on:
+  schedule:
+    - cron: "*/30 7-16 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # Scheduled runs are skipped until the repository variable ALERTS_ENABLED is "true"
+    # (Settings > Secrets and variables > Actions). The ntfy topic goes in the NTFY_TOPIC secret.
+    if: ${{ vars.ALERTS_ENABLED == 'true' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Check prices and send push notification
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python bot.py

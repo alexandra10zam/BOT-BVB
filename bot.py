@@ -18,13 +18,17 @@ REGULA DE ALERTĂ (per simbol, praguri diferite):
 INSTALARE (o singură dată):
   pip install yfinance requests --break-system-packages
 
-CONFIGURARE OBLIGATORIE mai jos: NTFY_TOPIC.
+CONFIGURARE OBLIGATORIE: variabila de mediu NTFY_TOPIC (nu se mai ține în cod,
+fiindcă repo-ul e public și oricine ar putea citi/trimite pe topic).
 Cum funcționează (fără cont, fără token):
   1. Instalează aplicația "ntfy" (iOS/Android) sau folosește https://ntfy.sh/app în browser.
   2. Alege un nume de topic UNIC și greu de ghicit (topicurile ntfy.sh sunt publice —
      oricine știe exact numele poate citi/trimite pe el), ex: "alerta-bursa-ax7k2m9".
   3. În aplicație, apasă "+" și abonează-te la topicul ales.
-  4. Pune același nume mai jos, la NTFY_TOPIC — scriptul trimite notificarea acolo.
+  4. Setează variabila de mediu NTFY_TOPIC cu același nume — scriptul trimite notificarea acolo.
+     Linux/Mac:  export NTFY_TOPIC="numele-tau-secret"
+     Windows:    setx NTFY_TOPIC "numele-tau-secret"
+     GitHub Actions: secretul NTFY_TOPIC (vezi .github/workflows/alerts.yml).
 
 VERIFICĂ TICKERELE: acest script folosește "TLV.RO" pentru Yahoo Finance. Dacă la
 rulare apare eroare sau date lipsă, verifică manual pe finance.yahoo.com dacă
@@ -33,13 +37,15 @@ mereu consistente. Pentru PTNEGETF, dacă Yahoo Finance nu are date, va trebui
 o sursă alternativă (ex. export manual din platforma brokerului tău).
 """
 
+import os
+
 import yfinance as yf
 import requests
 import pandas as pd
 from datetime import datetime
 
 # ── CONFIGURARE ──────────────────────────────────────────────────────────
-NTFY_TOPIC = "alerta-bursa-ax7k2m9"  # ex: "alerta-bursa-ax7k2m9"
+NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "").strip()
 
 SIMBOLURI = {
     "TLV.RO": {
@@ -111,6 +117,10 @@ def trimite_notificare(mesaje_alerta):
         return
 
     text_final = "\n\n".join(mesaje_alerta)
+    if not NTFY_TOPIC:
+        print("NTFY_TOPIC nu este setat — afișez alerta fără să trimit notificare:\n" + text_final)
+        return
+
     raspuns = requests.post(
         f"https://ntfy.sh/{NTFY_TOPIC}",
         data=text_final.encode("utf-8"),
